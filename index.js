@@ -1,12 +1,14 @@
 require('dotenv').load();
 
 const express = require('express');
+const cors = require('cors');
 const bodyParser = require('body-parser');
+const fs = require('fs');
 const pool = require('./database');
 const tokendecoder = require('./tokendecoder');
 
 const app = express();
-const port = 3000;
+const port = 8000;
 
 const getMemberByToken = async function(token) {
     let decodedtoken = tokendecoder.getMemberInfo(token);
@@ -17,13 +19,9 @@ const getMemberByToken = async function(token) {
     // sort of a hack but this should only ever return one person.
     return result[0];
 }
-
-app.use(bodyParser.json());
-app.use(
-  bodyParser.urlencoded({
-    extended: true,
-  })
-);
+app.use(cors());
+app.use(bodyParser.json({limit: "50mb"}));
+app.use(bodyParser.urlencoded({limit: "50mb", extended: true, parameterLimit:50000}));
 
 app.listen(port, 
     function start() {
@@ -31,11 +29,13 @@ app.listen(port,
     }
 );
 
-app.get('/', 
+app.get('/health', 
     async function get(request, response)  {
         try {
             let result = await pool.query('SELECT * FROM member where end_date is null order by last_name desc');
-            response.json(result);
+            if (result) {
+                response.json({ status: 'OK'});
+            }
         } catch(err) {
             throw new Error(err);
         }
@@ -52,9 +52,10 @@ app.get('/members/:token',
     }
 );
 
-app.post('/members/renew/:token',
+app.post('/members/renew/',
     async function renewMember(request, response) {
-        let decodedtoken = tokendecoder.getMemberInfo(request.params.token);
+        let token = request.body.token;
+        let decodedtoken = tokendecoder.getMemberInfo(token);
         let result = await pool.query(
             'select * FROM member where end_date is null and id = ? and zip = ? and year(date_joined) = ?', 
             [decodedtoken.id, decodedtoken.zip, decodedtoken.yearJoined]
@@ -68,8 +69,19 @@ app.post('/members/renew/:token',
                 'update member set current_year_renewed = 1, last_modified_date = CURRENT_TIMESTAMP(), last_modified_by = ? where id = ?', 
                 ['renewalsAPI', decodedtoken.id]
             );
-
-            response.json(updateResult)
+            // now that the database is updated, save the insurnace card file (to disk for now, although an s3 bucket is a good place)
+            let insuranceCapture = request.body.insCopy;
+            let fileData = insuranceCapture.split(';base64,')[1];
+            let savePath = process.env.FILE_PATH;
+            if (!fs.existsSync(savePath)) {
+                fs.mkdirSync(savePath);
+                console.log('created the path ' + savePath);
+            }
+            let fileName = savePath + '/' + (new Date().getFullYear()) + result[0].id + result[0].last_name + '.png';
+            fs.writeFile(fileName, fileData, {encoding: 'base64'}, function(err) {
+                console.log(fileName + ' created');
+            });
+            response.json(updateResult);
         }
     }
 );
