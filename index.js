@@ -4,11 +4,13 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
+const mailgun = require("mailgun-js");
+
 const pool = require('./database');
 const tokendecoder = require('./tokendecoder');
 
 const app = express();
-const port = 8000;
+const port = process.env.PORT;
 
 const getMemberByToken = async function(token) {
     let decodedtoken = tokendecoder.getMemberInfo(token);
@@ -32,10 +34,10 @@ app.listen(port,
 app.get('/health', 
     async function get(request, response)  {
         try {
-            let result = await pool.query('SELECT * FROM member where end_date is null order by last_name desc');
+            let result = await pool.query('SELECT count(*) FROM member where end_date is null and status !=9');
             if (result) {
-                response.json({ status: 'OK'});
-            }
+                response.json(result);
+            } 
         } catch(err) {
             throw new Error(err);
         }
@@ -64,6 +66,7 @@ app.post('/members/renew/',
         // overkill but going to do it anyway for safety.
         let exists = (result.length >= 1);
         if (exists) {
+            let member = result[0];
             // he exists, so update this mofo
             let updateResult = await pool.query(
                 'update member set current_year_renewed = 1, last_modified_date = CURRENT_TIMESTAMP(), last_modified_by = ? where id = ?', 
@@ -77,10 +80,30 @@ app.post('/members/renew/',
                 fs.mkdirSync(savePath);
                 console.log('created the path ' + savePath);
             }
-            let fileName = savePath + '/' + (new Date().getFullYear()) + result[0].id + result[0].last_name + '.png';
+            let fullYear = (new Date()).getFullYear();
+            let fileName = savePath + '/' + fullYear + '-' + member.id + member.last_name + '.png';
             fs.writeFile(fileName, fileData, {encoding: 'base64'}, function(err) {
                 console.log(fileName + ' created');
             });
+            // send a confirmation email as part of the renewal
+
+            let mailgun = require('mailgun-js')({apiKey: process.env.MAILER_API_KEY, domain: process.env.MAILER_DOMAIN});
+            
+            let data = {
+              from: 'hogbacksecretary@gmail.com',
+              to: member.email,
+              cc: 'hogbacksecretary@gmail.com',
+              subject: fullYear + ' PRA rules acknowledgement confirmation',
+              text: 
+                'Hi, ' + member.first_name + '!\nThis email is your confirmation that you have acknowledged the rules for PRA for ' +
+                'the coming season.  We will send you a gate code later this winter.  Please pass along your payment in the method ' +
+                'indicated in the instructions in our prior email.  See you soon!\n -PRA'
+            };
+            
+            mailgun.messages().send(data, function (error, body) {
+              console.log(body);
+            });
+
             response.json(updateResult);
         }
     }
