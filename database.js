@@ -6,7 +6,7 @@ const pool = mysql.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    connectionLimit: 2000,
+    connectionLimit: 10,
 });
 
 // Ping database to check for common exception errors.
