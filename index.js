@@ -11,7 +11,6 @@ const tokendecoder = require('./tokendecoder');
 const awsupload = require('./awsupload');
 
 const app = express();
-const port = process.env.PORT;
 
 const getMemberByToken = async function(token) {
     let decodedtoken = tokendecoder.getMemberInfo(token);
@@ -25,12 +24,6 @@ const getMemberByToken = async function(token) {
 app.use(cors());
 app.use(bodyParser.json({limit: "50mb"}));
 app.use(bodyParser.urlencoded({limit: "50mb", extended: true, parameterLimit:50000}));
-
-app.listen(port, 
-    function start() {
-        console.log(`App running on port ${port}.`);
-    }
-);
 
 app.get('/health', 
     async function get(request, response)  {
@@ -108,4 +101,4 @@ app.post('/members/renew/',
     }
 );
 
-
+module.exports = app;
