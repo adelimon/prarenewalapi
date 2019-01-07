@@ -8,6 +8,7 @@ const mailgun = require("mailgun-js");
 
 const pool = require('./database');
 const tokendecoder = require('./tokendecoder');
+const awsupload = require('./awsupload');
 
 const app = express();
 const port = process.env.PORT;
@@ -72,26 +73,24 @@ app.post('/members/renew/',
                 'update member set current_year_renewed = 1, last_modified_date = CURRENT_TIMESTAMP(), last_modified_by = ? where id = ?', 
                 ['renewalsAPI', decodedtoken.id]
             );
-            // now that the database is updated, save the insurnace card file (to disk for now, although an s3 bucket is a good place)
+            // now that the database is updated, save the insurance card file (to disk for now, although an s3 bucket is a good place)
             let insuranceCapture = request.body.insCopy;
-            let fileData = insuranceCapture.split(';base64,')[1];
-            let savePath = process.env.FILE_PATH;
-            if (!fs.existsSync(savePath)) {
-                fs.mkdirSync(savePath);
-                console.log('created the path ' + savePath);
-            }
+            let fileInfo = insuranceCapture.split(';base64,');
+            let fileTypeInfo = fileInfo[0].split(';');
+            let imgFileType = fileTypeInfo[0].replace('data:image\/', '');
+            let imgFileName = fileTypeInfo[1].replace('name=', '');
+            let fileData = fileInfo[1];
+
             let fullYear = (new Date()).getFullYear();
-            let fileName = savePath + '/' + fullYear + '-' + member.id + member.last_name + '.png';
-            fs.writeFile(fileName, fileData, {encoding: 'base64'}, function(err) {
-                console.log(fileName + ' created');
-            });
+
+            await awsupload.uploadToS3(fullYear+member.last_name+token, fileData, imgFileType);
             // send a confirmation email as part of the renewal
 
             let mailgun = require('mailgun-js')({apiKey: process.env.MAILER_API_KEY, domain: process.env.MAILER_DOMAIN});
             
             let data = {
               from: 'hogbacksecretary@gmail.com',
-              to: member.email,
+              to: member.first_name + ' ' + member.last_name + '<' + member.email + '>',
               cc: 'hogbacksecretary@gmail.com',
               subject: fullYear + ' PRA rules acknowledgement confirmation',
               text: 
