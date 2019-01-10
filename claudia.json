@@ -1,0 +1,10 @@
+{
+  "lambda": {
+    "role": "prarenewalapi-executor",
+    "name": "prarenewalapi",
+    "region": "us-east-1"
+  },
+  "api": {
+    "id": "628gl9s809"
+  }
+}
