@@ -4,16 +4,18 @@ require('dotenv').load();
 const AWS = require('aws-sdk');
 const fs = require('fs');
 const uploadToS3 = async function (name, base64Data, type) {
+    console.log('Starting s3 upload for ' + name+type);
     // Configure AWS with your access and secret key. I stored mine as an ENV on the server
     // ie: process.env.ACCESS_KEY_ID = "abcdefg"
     AWS.config.update({
         accessKeyId: process.env.ACCESS_KEY_ID,
         secretAccessKey: process.env.SECRET_ACCESS_KEY
     });
-
+    console.log('updated aws config');
     // Create an s3 instance
     const s3 = new AWS.S3();
-    const base64Buffer = new Buffer(base64Data, 'base64')
+    const base64Buffer = new Buffer(base64Data, 'base64');
+    console.log('created base 64 buffer');
     // With this setup, each time your user uploads an image, will be overwritten.
     // To prevent this, use a unique Key each time.
     // This won't be needed if they're uploading their avatar, hence the filename, userAvatar.js.
@@ -25,12 +27,14 @@ const uploadToS3 = async function (name, base64Data, type) {
         ContentType: `image/${type}` // required. Notice the back ticks
     }
 
+    console.log(JSON.stringify(params));
+
     // The upload() is used instead of putObject() as we'd need the location url and assign that to our user profile/database
     // see: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#upload-property
     console.log(new Date());
     s3.upload(params, (err, data) => {
         if (err) {
-            return console.log(err)
+            console.log(err)
         }
 
         // Continue if no error
