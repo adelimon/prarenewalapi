@@ -17,7 +17,9 @@ app.use(bodyParser.urlencoded({limit: "50mb", extended: true, parameterLimit:500
 app.get('/health', 
     async function get(request, response)  {
         try {
-            let result = await pool.query('SELECT count(*) FROM member where end_date is null and status !=9');
+            let result = await pool.query(
+                'SELECT count(*), mt.type FROM member m, member_types mt where m.end_date is null and m.status !=9 and m.status = mt.id group by mt.type order by count(*) desc'
+            );
             if (result) {
                 response.json(result);
             } 
@@ -66,7 +68,6 @@ app.post('/members/renew/',
             let fileInfo = insuranceCapture.split(';base64,');
             let fileTypeInfo = fileInfo[0].split(';');
             let imgFileType = fileTypeInfo[0].replace('data:image\/', '');
-            let imgFileName = fileTypeInfo[1].replace('name=', '');
             let fileData = fileInfo[1];
 
             let fullYear = (new Date()).getFullYear();
@@ -92,10 +93,11 @@ app.post('/members/renew/',
                 'the coming season.  We will send you a gate code later this winter.  Please pass along your payment in the method ' +
                 'indicated in the instructions in our prior email.  See you soon!\n -PRA'
             };
-            
-            mailgun.messages().send(data, function (error, body) {
-              console.log(body);
-            });
+            console.log(JSON.stringify(data));
+            console.log(process.env.MAILER_DOMAIN);
+
+            let body = await mailgun.messages().send(data);
+            console.log(JSON.stringify(body));
 
             response.json(updateResult);
         }

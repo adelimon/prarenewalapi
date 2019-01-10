@@ -1,5 +1,3 @@
-require('dotenv').load();
-
 // You can either "yarn add aws-sdk" or "npm i aws-sdk"
 const AWS = require('aws-sdk');
 const fs = require('fs');
@@ -7,10 +5,13 @@ const uploadToS3 = async function (name, base64Data, type) {
     console.log('Starting s3 upload for ' + name+type);
     // Configure AWS with your access and secret key. I stored mine as an ENV on the server
     // ie: process.env.ACCESS_KEY_ID = "abcdefg"
+    // when doing this locally re-add this.  it's not needed on lambda though
+    /*
     AWS.config.update({
         accessKeyId: process.env.ACCESS_KEY_ID,
         secretAccessKey: process.env.SECRET_ACCESS_KEY
     });
+    */
     console.log('updated aws config');
     // Create an s3 instance
     const s3 = new AWS.S3();
@@ -34,7 +35,7 @@ const uploadToS3 = async function (name, base64Data, type) {
     console.log(new Date());
     s3.upload(params, (err, data) => {
         if (err) {
-            console.log(err)
+            console.log("there was an error: " + err);
         }
 
         // Continue if no error
