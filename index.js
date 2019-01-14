@@ -104,4 +104,68 @@ app.post('/members/renew/',
     }
 );
 
+app.post('/members/apply',
+    async function newMemberApply(request, response) {
+        // step one: create the new guy in the database.
+        let applicant = request.body;
+        let year = (new Date()).getFullYear();
+        let insertApplicant = {
+            first_name: applicant.firstName,
+            last_name: applicant.lastName,
+            address: applicant.address,
+            city: applicant.city,
+            state: applicant.state,
+            zip: applicant.zip,
+            occupation: applicant.occupation,
+            phone: applicant.phone,
+            view_online: true,
+            email: applicant.email,
+            birthday: applicant.birthday,
+            date_joined: new Date(),
+            status: 21,
+            prefers_mail: false,
+            last_modified_by: 'renewalsApi',
+            last_modified_date: new Date(),
+        };
+        let result = await pool.query('insert into member set ?', insertApplicant);
+        console.log("inserted member id " + result.insertId + ": " + applicant.firstName + " " + applicant.lastName);
+        let createdResult = await pool.query('select * from member where id = ?', result.insertId);
+
+        // step two: send an email to the guy letting him know we have his application
+        //let mailgun = require('mailgun-js')({apiKey: process.env.MAILER_API_KEY, domain: process.env.MAILER_DOMAIN});
+        let applicantConfirmation = {
+            from: 'hogbacksecretary@gmail.com',
+            to: insertApplicant.first_name + ' ' + insertApplicant.last_name + '<' + insertApplicant.email + '>',
+            cc: 'hogbacksecretary@gmail.com',
+            subject: year + ' PRA application confirmation',
+            text: 
+              'Hi, ' + insertApplicant.first_name + '!\nThis email is your confirmation that your application to PRA has been received by the club.  We will\n' +
+              'follow up with you on any next steps, and usually we can do this soon (within 7-10 business days, sometimes more quickly).\n' +
+              'See you soon!\n -PRA'
+        };
+        //mailgun.messages.send(applicantConfirmation);
+
+        // step three: send an email to the board with the guy's information so that they can accept or deny the guy
+        // get all the board members for the current year
+        
+        let boardMembers = await pool.query(
+            'select m.first_name, m.last_name, m.email from member m where m.id in (select member_id from board_member where year = ' + year + ')'
+        );
+        let boardMemberEmails = new Array();
+        for (let index = 0; index < boardMembers.length; index++) {
+            let boardMember = boardMembers[index];
+            boardMemberEmails.push(boardMember.first_name + ' ' + boardMember.last_name + '<' + boardMember.email + '>');
+        }
+        let boardHtml = fs.readFileSync('./emails/boardApplicationNotify.html');        
+        let boardMemberNotification = {
+            from: 'hogbacksecretary@gmail.com',
+            to: boardMemberEmails.join(),
+            subject: 'New member application - ' + insertApplicant.first_name + ' ' + insertApplicant.last_name,
+            html: boardHtml,
+        };
+        // mailgun.messages.send(boardMemberNotification);
+        response.json(createdResult[0]); 
+    }
+);
+
 module.exports = app;
