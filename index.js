@@ -2,13 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
-const mailgun = require("mailgun-js");
+const mailcannon = require('./mailcannon');
 
 const pool = require('./database');
 const tokendecoder = require('./tokendecoder');
 const awsupload = require('./awsupload');
 
 const app = express();
+
+const emailWithName = function(rowData) {
+    return rowData.first_name + ' ' + rowData.last_name + '<' + rowData.email + '>';
+}
 
 app.use(cors());
 app.use(bodyParser.json({limit: "50mb"}));
@@ -81,11 +85,9 @@ app.post('/members/renew/',
             console.log('Upload complete for ' + token);
             // send a confirmation email as part of the renewal
 
-            let mailgun = require('mailgun-js')({apiKey: process.env.MAILER_API_KEY, domain: process.env.MAILER_DOMAIN});
-            
             let data = {
               from: 'hogbacksecretary@gmail.com',
-              to: member.first_name + ' ' + member.last_name + '<' + member.email + '>',
+              to: emailWithName(member),
               cc: 'hogbacksecretary@gmail.com',
               subject: fullYear + ' PRA rules acknowledgement confirmation',
               text: 
@@ -93,11 +95,7 @@ app.post('/members/renew/',
                 'the coming season.  We will send you a gate code later this winter.  Please pass along your payment in the method ' +
                 'indicated in the instructions in our prior email.  See you soon!\n -PRA'
             };
-            console.log(JSON.stringify(data));
-            console.log(process.env.MAILER_DOMAIN);
-
-            let body = await mailgun.messages().send(data);
-            console.log(JSON.stringify(body));
+            let response = await mailcannon.fire(data);
 
             response.json(updateResult);
         }
@@ -132,10 +130,9 @@ app.post('/members/apply',
         let createdResult = await pool.query('select * from member where id = ?', result.insertId);
 
         // step two: send an email to the guy letting him know we have his application
-        //let mailgun = require('mailgun-js')({apiKey: process.env.MAILER_API_KEY, domain: process.env.MAILER_DOMAIN});
         let applicantConfirmation = {
             from: 'hogbacksecretary@gmail.com',
-            to: insertApplicant.first_name + ' ' + insertApplicant.last_name + '<' + insertApplicant.email + '>',
+            to: emailWithName(insertApplicant),
             cc: 'hogbacksecretary@gmail.com',
             subject: year + ' PRA application confirmation',
             text: 
@@ -143,7 +140,7 @@ app.post('/members/apply',
               'follow up with you on any next steps, and usually we can do this soon (within 7-10 business days, sometimes more quickly).\n' +
               'See you soon!\n -PRA'
         };
-        //mailgun.messages.send(applicantConfirmation);
+        let mailgunResponse = await mailcannon.fire(applicantConfirmation);
 
         // step three: send an email to the board with the guy's information so that they can accept or deny the guy
         // get all the board members for the current year
@@ -153,17 +150,24 @@ app.post('/members/apply',
         );
         let boardMemberEmails = new Array();
         for (let index = 0; index < boardMembers.length; index++) {
-            let boardMember = boardMembers[index];
-            boardMemberEmails.push(boardMember.first_name + ' ' + boardMember.last_name + '<' + boardMember.email + '>');
+            boardMemberEmails.push(emailWithName(boardMembers[index]));
         }
-        let boardHtml = fs.readFileSync('./emails/boardApplicationNotify.html');        
+        let applicantInfo = [];
+        applicantInfo.push(applicant.firstName);
+        applicantInfo.push(applicant.lastName);
+        applicantInfo.push(applicant.city.replace(/\s/g, '+'));
+        applicantInfo.push(applicant.state);
+        let googleLink = 'https://www.google.com/search?q=' + applicantInfo.join('+');
+        let boardHtml = fs.readFileSync('./emails/boardApplicationNotify.html').toString('utf-8');      
+        boardHtml = boardHtml.replace('GOOGLE_LINK', googleLink);  
+        boardHtml = boardHtml.replace('APPLICANT_INFO', JSON.stringify(applicant, null, '\t'));
         let boardMemberNotification = {
             from: 'hogbacksecretary@gmail.com',
             to: boardMemberEmails.join(),
             subject: 'New member application - ' + insertApplicant.first_name + ' ' + insertApplicant.last_name,
             html: boardHtml,
         };
-        // mailgun.messages.send(boardMemberNotification);
+        mailcannon.fire(boardMemberNotification);
         response.json(createdResult[0]); 
     }
 );
