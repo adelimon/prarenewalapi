@@ -5,7 +5,12 @@ const fire = async function(ammo) {
     console.log(process.env.MAILER_DOMAIN);
 
     let body = await mailgun.messages().send(ammo);
-    console.log(JSON.stringify(body));
+    try {
+        console.log(JSON.stringify(body));
+    } catch (err) {
+        console.log("error sending email via mailgun api, see the next line for details");
+        console.log(JSON.stringify(err));
+    }
     return body;
 }
 module.exports = {

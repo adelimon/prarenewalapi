@@ -167,7 +167,7 @@ app.post('/members/apply',
             subject: 'New member application - ' + insertApplicant.first_name + ' ' + insertApplicant.last_name,
             html: boardHtml,
         };
-        mailcannon.fire(boardMemberNotification);
+        let boardEmail = await mailcannon.fire(boardMemberNotification);
         response.json(createdResult[0]); 
     }
 );
