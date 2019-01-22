@@ -95,7 +95,7 @@ app.post('/members/renew/',
                 'the coming season.  We will send you a gate code later this winter.  Please pass along your payment in the method ' +
                 'indicated in the instructions in our prior email.  See you soon!\n -PRA'
             };
-            let response = await mailcannon.fire(data);
+            let mailReponse = await mailcannon.fire(data);
 
             response.json(updateResult);
         }
