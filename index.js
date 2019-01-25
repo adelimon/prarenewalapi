@@ -166,7 +166,7 @@ app.post('/members/apply',
         boardHtml = boardHtml.replace('APPLICANT_INFO', JSON.stringify(applicant, null, '\t'));
         
         let boardMembers = await pool.query(
-            'select m.id, m.zip, m.first_name, m.last_name, m.email, year(m.date_joined) year_joined from member m where m.id in (select member_id from board_member where member_id = 47 and year = ' + year + ')'
+            'select m.id, m.zip, m.first_name, m.last_name, m.email, year(m.date_joined) year_joined from member m where m.id in (select member_id from board_member where year = ' + year + ')'
         );
         for (let index = 0; index < boardMembers.length; index++) {      
             let boardMember = boardMembers[index];
@@ -228,6 +228,7 @@ app.get('/applicant/approve/:year/:memberId/:boardMemberToken',
         // secretary telling him to get his shit done.
         let approvalResult = await pool.query('select count(*) approvals from application where member_id = ?', applicantId);
         let approvals = approvalResult[0].approvals;
+        // greater than 4 (5 or more) approvals is a majority so let the secretary know he's got work to do.
         if (approvals > 4) {
             // flip the member from 'applicant' to 'new member' now that all approvals are done. This saves the secretary
             // a step so that they don't have to do it manually.
