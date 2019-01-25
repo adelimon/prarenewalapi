@@ -17,6 +17,11 @@ const getMemberInfo = function(token) {
     return decodedToken;
 }
 
+const buildMemberToken = function(id, zip, joinedYear) {
+    return (id + '-' + zip + '-' + joinedYear);
+}
+
 module.exports = {
     getMemberInfo,
+    buildMemberToken,
 }
