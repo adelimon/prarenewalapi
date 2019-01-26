@@ -172,12 +172,12 @@ app.post('/members/apply',
             let boardMember = boardMembers[index];
             let boardMemberToken = tokendecoder.buildMemberToken(boardMember.id, boardMember.zip, boardMember.year_joined);
             let approvalLink = process.env.APPROVAL_LINK + year + '/' + result.insertId + '/' + boardMemberToken;
-            boardHtml = boardHtml.replace('APPROVAL_LINK', approvalLink);     
+            let boardMemberHtml = boardHtml.replace('APPROVAL_LINK', approvalLink);     
             let boardMemberNotification = {
                 from: 'hogbacksecretary@gmail.com',
                 to: emailWithName(boardMembers[index]),
                 subject: 'New member application - ' + insertApplicant.first_name + ' ' + insertApplicant.last_name,
-                html: boardHtml,
+                html: boardMemberHtml,
             };
             let boardEmail = await mailcannon.fire(boardMemberNotification);
         }
