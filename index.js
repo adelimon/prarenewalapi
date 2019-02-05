@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
+const _ = require('lodash');
+
 const mailcannon = require('./mailcannon');
 
 const pool = require('./database');
@@ -118,16 +120,16 @@ app.post('/members/apply',
         let applicant = request.body;
         let year = (new Date()).getFullYear();
         let insertApplicant = {
-            first_name: applicant.firstName,
-            last_name: applicant.lastName,
-            address: applicant.address,
-            city: applicant.city,
+            first_name: _.startCase(applicant.firstName),
+            last_name: _.startCase(applicant.lastName),
+            address: _.startCase(applicant.address),
+            city: _.startCase(applicant.city),
             state: applicant.state,
             zip: applicant.zip,
-            occupation: applicant.occupation,
+            occupation: _.startCase(applicant.occupation),
             phone: applicant.phone,
             view_online: true,
-            email: applicant.email,
+            email: applicant.email.toLowerCase(),
             birthday: applicant.birthday,
             date_joined: new Date(),
             status: 21,
@@ -229,7 +231,8 @@ app.get('/applicant/approve/:year/:memberId/:boardMemberToken',
         let approvalResult = await pool.query('select count(*) approvals from application where member_id = ?', applicantId);
         let approvals = approvalResult[0].approvals;
         // greater than 4 (5 or more) approvals is a majority so let the secretary know he's got work to do.
-        if (approvals > 4) {
+        // approvals after 5 will be counted, but don't harrass the secretary with them since we have enough already.
+        if (approvals === 5) {
             // flip the member from 'applicant' to 'new member' now that all approvals are done. This saves the secretary
             // a step so that they don't have to do it manually.
             await pool.query('update member set status = 14 where id = ?', applicantId);
