@@ -204,12 +204,13 @@ app.get('/applicant/approve/:year/:memberId/:boardMemberToken',
             [boardMemberInfo.id, applicationYear]
         );
         let applicantResult = await pool.query('select * from member where id = ?', applicantId);
-        if (boardMemberResult.length == 1) {
+        if (boardMemberResult.length === 1) {
             // make sure the member applying exists
             result.approver = boardMemberInfo.last_name + ', ' + boardMemberInfo.first_name;            
-            if (applicantResult && (applicantResult.length == 1)) {
+            if (applicantResult && (applicantResult.length === 1)) {
                 // both board member and applicant are valid, so record the response in the table
-                let approvalRecorded = await pool.query('select * from application where member_id = ? and approver = ?', [applicantId, boardMemberResult[0].id]);
+                let approvalRecorded = await pool.query('select * from application where member_id = ? and approver = ?', 
+                    [applicantId, boardMemberResult[0].id]);
                 // if there is an approval already recorded, then ignore this. but otherwise, record it.
                 if (approvalRecorded.length === 0) {
                     let approvalInsert = {
@@ -221,15 +222,20 @@ app.get('/applicant/approve/:year/:memberId/:boardMemberToken',
                     result.status = 'Success';
                     result.detail = 'Approval for ' + applicantResult[0].last_name + ' recorded at ' + approvalInsert.last_modified_date;                                        
                 } else {
-                    result.status = 'Failed';
+                    result.status = 'Success';
                     result.detail = 'Approval for ' + applicantResult[0].last_name + ' already recorded for you at ' + approvalRecorded[0].last_modified_date;                                        
                 }                
             }
         }        
         // that the approval is recorded, check to see if we have hit the threshold, and if so, throw an email to the
         // secretary telling him to get his shit done.
-        let approvalResult = await pool.query('select count(*) approvals from application where member_id = ?', applicantId);
-        let approvals = approvalResult[0].approvals;
+        let approvalResult = await pool.query(
+            //'select count(*) approvals from application where member_id = ?', 
+            `select m.last_name, m.first_name, a.last_modified_date
+            from member m inner join application a on a.approver = m.id where a.member_id = ?`,
+            applicantId
+        );
+        let approvals = approvalResult.length;
         // greater than 4 (5 or more) approvals is a majority so let the secretary know he's got work to do.
         // approvals after 5 will be counted, but don't harrass the secretary with them since we have enough already.
         if (approvals === 5) {
@@ -242,8 +248,13 @@ app.get('/applicant/approve/:year/:memberId/:boardMemberToken',
                 subject: 'PRA Application for ' + applicantResult[0].last_name + ',' + applicantResult[0].first_name + ' requires action',
                 text:
                     'Application for ' + applicantResult[0].last_name + ', ' + applicantResult[0].first_name +  ' has the required approvals.  Please ' +
-                    'log in to https://apps.palmyramx.com/#/member/' + applicantId + ' to generate a bill and complete the process.'
+                    'log in to https://apps.palmyramx.com/#/member/' + applicantId + ' to generate a bill and complete the process.\n  Approvers:\n'
             };
+            for (let index = 0; index < approvalResult.length; index++) {
+                let approver = approvalResult[index];
+                secretaryNotification.text += 
+                    approver.first_name + ', ' + approver.last_name + ' at ' + approver.last_modified_date + '\n';
+            }
             let mailResult = await mailcannon.fire(secretaryNotification);
             result.detail += 'all approvals recieved, sent for further processing';
         }
