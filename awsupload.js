@@ -28,7 +28,7 @@ const uploadToS3 = async function (name, base64Data, type) {
         ContentType: `image/${type}` // required. Notice the back ticks
     }
 
-    console.log(JSON.stringify(params));
+    //console.log(JSON.stringify(params));
 
     // The upload() is used instead of putObject() as we'd need the location url and assign that to our user profile/database
     // see: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#upload-property
@@ -37,7 +37,9 @@ const uploadToS3 = async function (name, base64Data, type) {
         if (err) {
             console.log("there was an error: " + err);
         }
-
+        if (data) {
+            console.log(JSON.stringify(data));
+        }
         // Continue if no error
         // Save data.Location in your database
         console.log('Image successfully uploaded.');
