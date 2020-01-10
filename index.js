@@ -149,7 +149,7 @@ app.post('/members/apply',
             subject: year + ' PRA application confirmation',
             text: 
               'Hi, ' + insertApplicant.first_name + '!\nThis email is your confirmation that your application to PRA has been received by the club.  We will\n' +
-              'follow up with you on any next steps, and usually we can do this soon (within 7-10 business days, sometimes more quickly).\n' +
+              'follow up with you on any next steps.  We will be reviewing all applications in late February of 2020.\n' +
               'See you soon!\n -PRA'
         };
         let mailgunResponse = await mailcannon.fire(applicantConfirmation);
