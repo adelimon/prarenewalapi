@@ -49,6 +49,41 @@ app.get('/health',
         }
     }
 );
+
+app.get('/events/thisyear', 
+    async function get(request, response)  {
+        try {
+            let result = await pool.query(
+                `select sd.date, et.type, sd.event_name, sd.event_description, sd.event_type_id from schedule_date sd, event_type et
+                 where year(sd.date) = year(now()) and sd.event_type_id = et.id and sd.event_type_id != 9
+                 order by sd.date`
+            );
+            if (result) {
+                response.json(result);
+            } 
+        } catch(err) {
+            throw new Error(err);
+        }
+    }    
+);
+
+app.get('/events/next', 
+    async function get(request, response)  {
+        try {
+            let result = await pool.query(
+                `select sd.date, et.type, sd.event_name, sd.event_description, sd.event_type_id from schedule_date sd, event_type et
+                 where year(sd.date) = year(now()) and sd.event_type_id = et.id and sd.event_type_id != 9
+                 order by sd.date limit 1`
+            );
+            if (result) {
+                response.json(result);
+            } 
+        } catch(err) {
+            throw new Error(err);
+        }
+    }    
+);
+
 app.get('/members/:token', 
     async function getMember(request, response)  {
         try {
