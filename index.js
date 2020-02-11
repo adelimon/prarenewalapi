@@ -32,8 +32,9 @@ const lookupMemberByToken = async function(memberToken) {
 }
 
 app.use(cors());
-app.use(bodyParser.json({limit: "50mb"}));
+app.use(bodyParser.json({limit: "50mb", extended: true, parameterLimit:50000}));
 app.use(bodyParser.urlencoded({limit: "50mb", extended: true, parameterLimit:50000}));
+app.use(bodyParser.raw({limit: "50mb", extended: true, parameterLimit:50000}));
 
 app.get('/health', 
     async function get(request, response)  {
