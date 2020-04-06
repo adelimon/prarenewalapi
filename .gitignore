@@ -1,3 +1,5 @@
 node_modules/
 .vscode/
 .env
+id_rsa_bastion
+id_rsa_bastion.pub

@@ -19,8 +19,8 @@ const emailWithName = function(rowData) {
 const lookupMemberByToken = async function(memberToken) {
     let decodedtoken = tokendecoder.getMemberInfo(memberToken);
     let memberResult = await pool.query(
-        'select * FROM member where end_date is null and id = ? and zip = ? and year(date_joined) = ?', 
-        [decodedtoken.id, decodedtoken.zip, decodedtoken.yearJoined]
+        'select * FROM member where end_date is null and id = ? and year(date_joined) = ?', 
+        [decodedtoken.id, decodedtoken.yearJoined]
     );
     // this is a bit of a hack a roo, but this should only return one combination and if it returns more
     // something is wrong anyway.
@@ -296,6 +296,90 @@ app.get('/applicant/approve/:year/:memberId/:boardMemberToken',
         }
         console.log(JSON.stringify(result));
         response.json(result);
+    }
+);
+
+app.post('/members/captureBikes',
+    async function captureBikes(request, response) {
+        let memberInfo = request.body;
+        let member = await lookupMemberByToken(memberInfo.token);
+        let addressChanged = (memberInfo.address !== member.address);
+        let zipChanged = (memberInfo.zip !== memberInfo.zip);
+        let cityChanged = (memberInfo.city !== memberInfo.city);
+        if (addressChanged || zipChanged || cityChanged) {
+            // todo if the address has changed, update the address in our records using a query.
+            let updateResult = await pool.query(
+                'update member set address = ?, city = ?, zip = ?, last_modified_date = CURRENT_TIMESTAMP(), last_modified_by = ? where id = ?', 
+                [memberInfo.address, memberInfo.city, memberInfo.zip, 'renewalsAPI', member.id]
+            );
+        }
+        // clean up the data
+        await pool.query(
+            'delete from member_family where member_id = ?', [member.id]
+        );
+
+        await pool.query(
+            'delete from member_bikes where member_id = ?', [member.id]
+        );
+        
+        // now get family members into the database
+        // split the family member input by lines
+        if (memberInfo.familyMembers) {
+            let familyMembers = memberInfo.familyMembers.split(/\n/);
+            for (let familyLine of familyMembers) {
+                let family = familyLine.split(/\s/);
+                let firstName = family[0];
+                let lastName = family[1];
+                if (firstName && lastName) {
+                    // fix bad input
+                    firstName = firstName.replace(/,/, "");
+                    lastName = lastName.replace(/,/, "");
+                    firstName = _.startCase(firstName);
+                    lastName = _.startCase(lastName);
+
+                    // shove family member in the database
+                    let insertFamily = await pool.query(
+                        'insert into member_family (first_name, last_name, member_id) values (?, ?, ?)',
+                        [firstName, lastName, member.id]
+                    );
+                }
+            }
+        }
+        if (memberInfo.bikes) {
+            let bikes = memberInfo.bikes.split(/\n/);
+            for (let bikeLine of bikes) {
+                let bike = bikeLine.split(/\s/);
+                let bikeYear = bike[0];
+                let bikeMake = bike[1];
+                let bikeModel = '';
+                for (let index = 2; index < bike.length; index++) {
+                    bikeModel += bike[index] + ' ';
+                }
+                if (bikeMake.toLowerCase() === "ktm") {
+                    bikeMake = _.upperCase(bikeMake);
+                } else {
+                    bikeMake = _.startCase(bikeMake);
+                }
+                // shove member bike in the database
+                let insertBike = await pool.query(
+                    'insert into member_bikes (year, make, model, member_id) values (?, ?, ?, ?)',
+                    [bikeYear, bikeMake, bikeModel, member.id]
+                );
+            }
+        }
+        let emailNotification = {
+            from: 'hogbacksecretary@gmail.com',
+            to: emailWithName(member),
+            //cc: 'hogbacksecretary@gmail.com',
+            subject: 'PRA Bike sticker program confirmation',
+            text: 
+                'Hi, ' + member.first_name + '!\n' +
+                'This email is your confirmation that we have your information for the bike sticker program.  You entered the following bikes:\n' +
+                memberInfo.bikes + '\n\n' +
+                'And the following family members\n\n' +
+                memberInfo.familyMembers
+          };
+          let mailReponse = await mailcannon.fire(emailNotification);
     }
 );
 module.exports = app;
