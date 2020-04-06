@@ -324,6 +324,7 @@ app.post('/members/captureBikes',
         
         // now get family members into the database
         // split the family member input by lines
+        let bikeCount = 0;
         if (memberInfo.familyMembers) {
             let familyMembers = memberInfo.familyMembers.split(/\n/);
             for (let familyLine of familyMembers) {
@@ -347,6 +348,7 @@ app.post('/members/captureBikes',
         }
         if (memberInfo.bikes) {
             let bikes = memberInfo.bikes.split(/\n/);
+            bikeCount = bikes.length;
             for (let bikeLine of bikes) {
                 let bike = bikeLine.split(/\s/);
                 let bikeYear = bike[0];
@@ -374,10 +376,12 @@ app.post('/members/captureBikes',
             subject: 'PRA Bike sticker program confirmation',
             text: 
                 'Hi, ' + member.first_name + '!\n' +
-                'This email is your confirmation that we have your information for the bike sticker program.  You entered the following bikes:\n' +
+                'This email is your confirmation that we have your information for the bike sticker program.  You entered the following ' + bikeCount + ' bikes:\n' +
                 memberInfo.bikes + '\n\n' +
                 'And the following family members\n\n' +
-                memberInfo.familyMembers
+                memberInfo.familyMembers + '\n\n' +
+                'Your stickers will go to the following address that you confirmed:\n\n' +
+                memberInfo.address + '\n' + memberInfo.city + ', ' + memberInfo.state + ' '  + memberInfo.zip,
           };
           let mailReponse = await mailcannon.fire(emailNotification);
     }
