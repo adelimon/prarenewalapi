@@ -369,21 +369,25 @@ app.post('/members/captureBikes',
                 );
             }
         }
+        if (!memberInfo.familyMembers) {
+            memberInfo.familyMembers = '';
+        }
         let emailNotification = {
             from: 'hogbacksecretary@gmail.com',
             to: emailWithName(member),
-            //cc: 'hogbacksecretary@gmail.com',
+            cc: 'hogbacksecretary@gmail.com',
             subject: 'PRA Bike sticker program confirmation',
             text: 
                 'Hi, ' + member.first_name + '!\n' +
-                'This email is your confirmation that we have your information for the bike sticker program.  You entered the following ' + bikeCount + ' bikes:\n' +
+                'This email is your confirmation that we have your information for the bike sticker program.  You entered the following ' + bikeCount + ' bike(s):\n' +
                 memberInfo.bikes + '\n\n' +
                 'And the following family members\n\n' +
                 memberInfo.familyMembers + '\n\n' +
-                'Your stickers will go to the following address that you confirmed:\n\n' +
+                'Your ' + bikeCount + ' sticker(s) will go to the following address that you confirmed:\n\n' +
                 memberInfo.address + '\n' + memberInfo.city + ', ' + memberInfo.state + ' '  + memberInfo.zip,
           };
           let mailReponse = await mailcannon.fire(emailNotification);
+          response.json(mailReponse);
     }
 );
 module.exports = app;
