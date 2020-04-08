@@ -321,16 +321,14 @@ app.post('/members/captureBikes',
         await pool.query(
             'delete from member_bikes where member_id = ?', [member.id]
         );
-        
+        let familyStr = '';
+        let bikesStr = '';
+
         // now get family members into the database
-        // split the family member input by lines
-        let bikeCount = 0;
-        if (memberInfo.familyMembers) {
-            let familyMembers = memberInfo.familyMembers.split(/\n/);
-            for (let familyLine of familyMembers) {
-                let family = familyLine.split(/\s/);
-                let firstName = family[0];
-                let lastName = family[1];
+        if (memberInfo.familyMembers) {            
+            for (let familyMember of memberInfo.familyMembers) {
+                let firstName = familyMember.firstName;
+                let lastName = familyMember.lastName;
                 if (firstName && lastName) {
                     // fix bad input
                     firstName = firstName.replace(/,/, "");
@@ -343,20 +341,15 @@ app.post('/members/captureBikes',
                         'insert into member_family (first_name, last_name, member_id) values (?, ?, ?)',
                         [firstName, lastName, member.id]
                     );
+                    familyStr += firstName + ' ' + lastName + '\n';
                 }
             }
         }
         if (memberInfo.bikes) {
-            let bikes = memberInfo.bikes.split(/\n/);
-            bikeCount = bikes.length;
-            for (let bikeLine of bikes) {
-                let bike = bikeLine.split(/\s/);
-                let bikeYear = bike[0];
-                let bikeMake = bike[1];
-                let bikeModel = '';
-                for (let index = 2; index < bike.length; index++) {
-                    bikeModel += bike[index] + ' ';
-                }
+            for (let bike of memberInfo.bikes) {
+                let bikeYear = bike.year;
+                let bikeMake = bike.make;
+                let bikeModel = bike.model;
                 if (bikeMake.toLowerCase() === "ktm") {
                     bikeMake = _.upperCase(bikeMake);
                 } else {
@@ -367,11 +360,13 @@ app.post('/members/captureBikes',
                     'insert into member_bikes (year, make, model, member_id) values (?, ?, ?, ?)',
                     [bikeYear, bikeMake, bikeModel, member.id]
                 );
+                bikesStr += bikeYear + ' ' + bikeMake + ' ' + bikeModel + '\n';
             }
         }
         if (!memberInfo.familyMembers) {
             memberInfo.familyMembers = '';
         }
+
         let emailNotification = {
             from: 'hogbacksecretary@gmail.com',
             to: emailWithName(member),
@@ -379,11 +374,11 @@ app.post('/members/captureBikes',
             subject: 'PRA Bike sticker program confirmation',
             text: 
                 'Hi, ' + member.first_name + '!\n' +
-                'This email is your confirmation that we have your information for the bike sticker program.  You entered the following ' + bikeCount + ' bike(s):\n' +
-                memberInfo.bikes + '\n\n' +
-                'And the following family members\n\n' +
-                memberInfo.familyMembers + '\n\n' +
-                'Your ' + bikeCount + ' sticker(s) will go to the following address that you confirmed:\n\n' +
+                'This email is your confirmation that we have your information for the bike sticker program.  You entered the following ' + memberInfo.bikes.length + ' bike(s):\n' +
+                bikesStr + '\n' +
+                'And the following family members:\n' +
+                familyStr + '\n' +
+                'Your ' + memberInfo.bikes.length + ' sticker(s) will go to the following address that you confirmed:\n\n' +
                 memberInfo.address + '\n' + memberInfo.city + ', ' + memberInfo.state + ' '  + memberInfo.zip,
           };
           let mailReponse = await mailcannon.fire(emailNotification);
