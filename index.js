@@ -9,7 +9,7 @@ const mailcannon = require('./mailcannon');
 const pool = require('./database');
 const tokendecoder = require('./tokendecoder');
 const awsupload = require('./awsupload');
-
+const package = require('./package.json');
 const app = express();
 
 const emailWithName = function(rowData) {
@@ -306,13 +306,17 @@ app.post('/members/captureBikes',
         let addressChanged = (memberInfo.address !== member.address);
         let zipChanged = (memberInfo.zip !== memberInfo.zip);
         let cityChanged = (memberInfo.city !== memberInfo.city);
+        console.log('starting member data update for ' + memberInfo.token + ' ' + memberInfo.id);
         if (addressChanged || zipChanged || cityChanged) {
             // todo if the address has changed, update the address in our records using a query.
+            console.log('Updating address for ' + memberInfo.token);
             let updateResult = await pool.query(
                 'update member set address = ?, city = ?, zip = ?, last_modified_date = CURRENT_TIMESTAMP(), last_modified_by = ? where id = ?', 
                 [memberInfo.address, memberInfo.city, memberInfo.zip, 'renewalsAPI', member.id]
             );
+            console.log(JSON.stringify(updateResult));
         }
+        console.log('removing old famnily and bike data for this member');
         // clean up the data
         await pool.query(
             'delete from member_family where member_id = ?', [member.id]
@@ -341,6 +345,8 @@ app.post('/members/captureBikes',
                         'insert into member_family (first_name, last_name, member_id) values (?, ?, ?)',
                         [firstName, lastName, member.id]
                     );
+                    console.log('adding family member');
+                    console.log(JSON.stringify(insertFamily));
                     familyStr += firstName + ' ' + lastName + '\n';
                 }
             }
@@ -360,6 +366,8 @@ app.post('/members/captureBikes',
                     'insert into member_bikes (year, make, model, member_id) values (?, ?, ?, ?)',
                     [bikeYear, bikeMake, bikeModel, member.id]
                 );
+                console.log('adding bike');
+                console.log(JSON.stringify(insertBike));
                 bikesStr += bikeYear + ' ' + bikeMake + ' ' + bikeModel + '\n';
             }
         }
@@ -382,6 +390,7 @@ app.post('/members/captureBikes',
                 memberInfo.address + '\n' + memberInfo.city + ', ' + memberInfo.state + ' '  + memberInfo.zip,
           };
           let mailReponse = await mailcannon.fire(emailNotification);
+          console.log('mail sent for ' + memberInfo.token + ' we are all done, wrapping it up');
           response.json(mailReponse);
     }
 );
