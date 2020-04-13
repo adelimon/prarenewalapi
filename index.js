@@ -304,8 +304,8 @@ app.post('/members/captureBikes',
         let memberInfo = request.body;
         let member = await lookupMemberByToken(memberInfo.token);
         let addressChanged = (memberInfo.address !== member.address);
-        let zipChanged = (memberInfo.zip !== memberInfo.zip);
-        let cityChanged = (memberInfo.city !== memberInfo.city);
+        let zipChanged = (memberInfo.zip !== member.zip);
+        let cityChanged = (memberInfo.city !== member.city);
         console.log('starting member data update for ' + memberInfo.token + ' ' + memberInfo.id);
         if (addressChanged || zipChanged || cityChanged) {
             // todo if the address has changed, update the address in our records using a query.
@@ -316,7 +316,15 @@ app.post('/members/captureBikes',
             );
             console.log(JSON.stringify(updateResult));
         }
-        console.log('removing old famnily and bike data for this member');
+        if (memberInfo.phone !== member.phone) {
+            console.log('Updating phone number for ' + memberInfo.token);
+            let updateResult = await pool.query(
+                'update member set phone = ?, last_modified_date = CURRENT_TIMESTAMP(), last_modified_by = ? where id = ?', 
+                [memberInfo.phone, 'renewalsAPI', member.id]
+            );
+            console.log(JSON.stringify(updateResult));            
+        }
+        console.log('removing old family and bike data for this member');
         // clean up the data
         await pool.query(
             'delete from member_family where member_id = ?', [member.id]

@@ -1,6 +1,6 @@
 {
   "name": "prarenewalapi",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "API for Palmyra Racing Association renewals, applications, and data updates.",
   "main": "index.js",
   "scripts": {
