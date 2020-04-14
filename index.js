@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const _ = require('lodash');
+const jwt = require('express-jwt');
 
 const mailcannon = require('./mailcannon');
 
@@ -402,4 +403,47 @@ app.post('/members/captureBikes',
           response.json(mailReponse);
     }
 );
+
+app.post('/members/sendBikeDataForm/:id?',
+    jwt({ secret: process.env.SHARED_SECRET }),
+    async function sendBikeDataForm(request, response) {        
+        let requestQuery =  `select am.*, year(am.date_joined) year_joined, m.zip from active_members am, member m where am.paperwork = 'Yes' 
+            and am.paid = 'Yes' and m.id = am.id order by am.last_name`;
+        let requestParams = [];
+        if (request.params.id) {
+            requestQuery = `select am.*, year(am.date_joined) year_joined, m.zip from active_members am, member m where am.paperwork = 'Yes' 
+                and am.paid = 'Yes' and am.id = ? and m.id = am.id order by am.last_name`;
+            requestParams = [parseInt(request.params.id)];
+        }
+        let eligibleMembers = await pool.query(requestQuery, requestParams);
+        // read the email before the loop so we don't do this 200+ times, which would work, but be very very disappoint.
+        let emailBody = fs.readFileSync('./emails/bikeDataEmail.html').toString('utf-8');   
+        let sentCount = 0; 
+        let errorCount = 0;   
+        for (let index = 0; index < eligibleMembers.length; index++) {
+
+            let activeMember = eligibleMembers[index];
+            // for each active member, generate an email with a link that tells them what to do.
+            let token = tokendecoder.buildMemberToken(activeMember.id, activeMember.zip, activeMember.year_joined);
+            let link = 'https://renew.palmyramx.com/?token='+token;
+            let memberEmailBody = emailBody.replace(/MEMBER_NAME/, activeMember.first_name);
+            memberEmailBody = memberEmailBody.replace(/MEMBER_LINK/g, link);
+            let emailNotification = {
+                from: 'hogbacksecretary@gmail.com',
+                to: emailWithName(activeMember),
+                subject: 'PRA member bike sticker information request form',
+                text: memberEmailBody,
+            };
+            let memberEmail = await mailcannon.fire(emailNotification);
+            sentCount++;
+            console.log('bike info form sent request sent for ' + emailWithName(activeMember));
+        }
+        let jobResponse = {
+            messagesSent: sentCount,
+            messagesErrored: errorCount,            
+        }
+        response.json(jobResponse)
+    }
+);
+
 module.exports = app;
