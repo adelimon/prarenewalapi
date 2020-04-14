@@ -432,7 +432,7 @@ app.post('/members/sendBikeDataForm/:id?',
                 from: 'hogbacksecretary@gmail.com',
                 to: emailWithName(activeMember),
                 subject: 'PRA member bike sticker information request form',
-                text: memberEmailBody,
+                html: memberEmailBody,
             };
             let memberEmail = await mailcannon.fire(emailNotification);
             sentCount++;
