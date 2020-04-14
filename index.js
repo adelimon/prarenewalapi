@@ -396,7 +396,8 @@ app.post('/members/captureBikes',
                 'And the following family members:\n' +
                 familyStr + '\n' +
                 'Your ' + memberInfo.bikes.length + ' sticker(s) will go to the following address that you confirmed:\n\n' +
-                memberInfo.address + '\n' + memberInfo.city + ', ' + memberInfo.state + ' '  + memberInfo.zip,
+                memberInfo.address + '\n' + memberInfo.city + ', ' + memberInfo.state + ' '  + memberInfo.zip + '\n\n' +
+                memberInfo.phone
           };
           let mailReponse = await mailcannon.fire(emailNotification);
           console.log('mail sent for ' + memberInfo.token + ' we are all done, wrapping it up');
