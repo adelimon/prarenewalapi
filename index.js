@@ -361,7 +361,7 @@ app.post('/members/renew',
             from: 'hogbacksecretary@gmail.com',
             to: emailWithName(member),
             cc: 'hogbacksecretary@gmail.com',
-            subject: 'PRA Bike sticker program confirmation',
+            subject: 'PRA Renewal Confirmation for ' + fullYear + ' Season',
             text:
                 'Hi, ' + member.first_name + '!\n' +
                 'This email is your confirmation that you have acknowledged the rules for PRA for the coming season.  We will send you a bike sticker and gate code ' +
