@@ -1,17 +1,20 @@
 // You can either "yarn add aws-sdk" or "npm i aws-sdk"
 const AWS = require('aws-sdk');
 const fs = require('fs');
-const uploadToS3 = async function (name, base64Data, type) {
+const uploadToS3 = async function (year, name, base64Data, type) {
     console.log('Starting s3 upload for ' + name+type);
     // Configure AWS with your access and secret key. I stored mine as an ENV on the server
     // ie: process.env.ACCESS_KEY_ID = "abcdefg"
-    // when doing this locally re-add this.  it's not needed on lambda though
-    /*
-    AWS.config.update({
-        accessKeyId: process.env.ACCESS_KEY_ID,
-        secretAccessKey: process.env.SECRET_ACCESS_KEY
-    });
-    */
+    // when doing this locally, set this.  But you don't need to on Lambda, since that's in the
+    // same VPC.
+    let configureAws = process.env.CONFIGURE_AWS;
+    if (configureAws) {
+        AWS.config.update({
+            accessKeyId: process.env.ACCESS_KEY_ID,
+            secretAccessKey: process.env.SECRET_ACCESS_KEY
+        });
+    }
+
     console.log('updated aws config');
     // Create an s3 instance
     const s3 = new AWS.S3();
@@ -22,10 +25,14 @@ const uploadToS3 = async function (name, base64Data, type) {
     // This won't be needed if they're uploading their avatar, hence the filename, userAvatar.js.
     const params = {
         Bucket: process.env.S3_BUCKET,
-        Key: `${name}.${type}`, // type is not required
+        Key: `${year}/${name}.${type}`,
         Body: base64Buffer,
-        ContentEncoding: 'base64', // required
-        ContentType: `image/${type}` // required. Notice the back ticks
+        ContentEncoding: 'base64',
+        ContentType: `image/${type}`,
+        // I'm using Intelligent Tiering here because these are seldom, if ever, accessed.
+        // The Optimal storage class would be "not stored at all" :)
+        // I don't even know why the Fudge we even store them but they are cheap enough.
+        StorageClass: 'INTELLIGENT_TIERING'
     }
 
     //console.log(JSON.stringify(params));
