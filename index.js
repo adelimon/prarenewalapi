@@ -434,7 +434,9 @@ app.get('/events/next/members',
                 where year(sd.date) = year(now()) and sd.date > now() and sd.event_type_id = et.id order by sd.date limit 1`
             );
             if (result) {
-                response.json(result[0]);
+                let dateResult = result[0];
+                dateResult.date = new Date(dateResult).toLocaleDateString('en-us');
+                response.json(dateResult);
             }
         } catch(err) {
             throw new Error(err);
