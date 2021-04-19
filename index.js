@@ -415,9 +415,11 @@ app.get('/members/lookup/:phone',
                 `select last_name, first_name, phone, id, year(date_joined) jy, zip from member where replace(replace(phone, '-', ''), '.', '') = ?`,
                 [incomingPhone]
             );
+            let memberResult = {};
             if (result) {
-                response.json(result[0]);
+                memberResult = result[0];
             }
+            response.json(memberResult);
         } catch (err) {
             throw new Error(err);
         }
