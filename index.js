@@ -69,23 +69,6 @@ app.get('/events/thisyear',
     }
 );
 
-app.get('/events/next',
-    async function get(request, response)  {
-        try {
-            let result = await pool.query(
-                `select sd.date, et.type, sd.event_name, sd.event_description, sd.event_type_id from schedule_date sd, event_type et
-                 where year(sd.date) = year(now()) and sd.event_type_id = et.id and sd.event_type_id != 9
-                 order by sd.date limit 1`
-            );
-            if (result) {
-                response.json(result);
-            }
-        } catch(err) {
-            throw new Error(err);
-        }
-    }
-);
-
 app.get('/members/:token',
     async function getMember(request, response)  {
         try {
@@ -421,6 +404,56 @@ app.post('/members/sendBikeDataForm/:id?',
             messagesErrored: errorCount,
         }
         response.json(jobResponse)
+    }
+);
+
+app.get('/members/lookup/:phone',
+    async function get(request, response) {
+        try {
+            let incomingPhone = request.params.phone.replace('+1', '');
+            let result = await pool.query(
+                `select last_name, first_name, phone, id, year(date_joined) jy, zip from member where replace(replace(phone, '-', ''), '.', '') = ?`,
+                [incomingPhone]
+            );
+            if (result) {
+                response.json(result[0]);
+            }
+        } catch (err) {
+            throw new Error(err);
+        }
+    }
+);
+
+app.get('/events/next/members',
+    async function get(request, response)  {
+        try {
+            let result = await pool.query(
+                `select sd.date, et.type, sd.event_name, sd.event_description, sd.event_type_id from schedule_date sd, event_type et
+                where year(sd.date) = year(now()) and sd.date > now() and sd.event_type_id = et.id order by sd.date limit 1`
+            );
+            if (result) {
+                response.json(result[0]);
+            }
+        } catch(err) {
+            throw new Error(err);
+        }
+    }
+);
+
+app.get('/events/next',
+    async function get(request, response)  {
+        try {
+            let result = await pool.query(
+                `select sd.date, et.type, sd.event_name, sd.event_description, sd.event_type_id from schedule_date sd, event_type et
+                where year(sd.date) = year(now()) and sd.date > now() and sd.event_type_id = et.id and sd.event_type_id not in (7,9)
+                order by sd.date limit 1`
+            );
+            if (result) {
+                response.json(result[0]);
+            }
+        } catch(err) {
+            throw new Error(err);
+        }
     }
 );
 
