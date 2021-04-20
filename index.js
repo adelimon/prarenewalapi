@@ -434,9 +434,15 @@ app.get('/events/next/members',
                 where year(sd.date) = year(now()) and sd.date > now() and sd.event_type_id = et.id order by sd.date limit 1`
             );
             if (result) {
-                let dateResult = result[0];
-                dateResult.date = new Date(dateResult).toLocaleDateString('en-us');
-                response.json(dateResult);
+                let dateResult = result[0].date;
+                let longFormDate = new Date(dateResult).toLocaleDateString(
+                    'en-us',  { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+                );
+                let apiResponse = {
+                    date: longFormDate,
+                    type: result[0].type,
+                }
+                response.json(apiResponse);
             }
         } catch(err) {
             throw new Error(err);
