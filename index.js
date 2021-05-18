@@ -467,4 +467,21 @@ app.get('/events/next',
     }
 );
 
+app.get('/gatecode',
+    jwt({ secret: process.env.SHARED_SECRET }),
+    async function(request, response) {
+        try {
+            let result = await pool.query(
+                `select apiKey from integration where platform = 'gateCode'`
+            );
+            let apiReponse = {
+                code: result[0].apiKey,
+            }
+            response.json(apiReponse);
+        } catch (err) {
+            throw new Error(err);
+        }
+    }
+);
+
 module.exports = app;
