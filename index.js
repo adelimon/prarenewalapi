@@ -468,7 +468,6 @@ app.get('/events/next',
 );
 
 app.get('/gatecode',
-    jwt({ secret: process.env.SHARED_SECRET }),
     async function(request, response) {
         try {
             let result = await pool.query(
