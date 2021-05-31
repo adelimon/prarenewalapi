@@ -483,16 +483,18 @@ app.get('/gatecode',
     }
 );
 
-app.put('/member/optIn/:memberToken',
+app.put('/member/optIn/:id',
     async function(request, response) {
-        let memberToken = request.params.memberToken;
-        let decodedtoken = tokendecoder.getMemberInfo(memberToken);
+        let id = request.params.id;
         let result = await pool.query(
-            'update member set text_ok = 1 where id = ? and zip = ? and year(date_joined) = ? and last_modified_date = CURRENT_TIMESTAMP()', 
-            [decodedtoken.id, decodedtoken.zip, decodedtoken.yearJoined],
+            'update member set text_ok = 1 where id = ? and last_modified_date = CURRENT_TIMESTAMP()', 
+            [id],
         );
         console.log(JSON.stringify(result));
-        console.log("member id " + decodedtoken.id + " has been opted in to text messaging.");
+        let msg = "member id " + id + " has been opted in to text messaging.";
+        console.log(msg);
+        result.message = msg;
+        response.json(result);
     }
 );
 
