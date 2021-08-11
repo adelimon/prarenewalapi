@@ -487,7 +487,7 @@ app.put('/member/optIn/:id',
     async function(request, response) {
         let id = request.params.id;
         let result = await pool.query(
-            'update member set text_ok = 1 where id = ? and last_modified_date = CURRENT_TIMESTAMP()', 
+            'update member set text_ok = 1, last_modified_date = CURRENT_TIMESTAMP() where id = ?', 
             [id],
         );
         console.log(JSON.stringify(result));
@@ -495,6 +495,17 @@ app.put('/member/optIn/:id',
         console.log(msg);
         result.message = msg;
         response.json(result);
+    }
+);
+
+app.get('/member/text/allowed', 
+    async function(request, response) {
+        try {
+            let result = await pool.query('select * from text_allow_list');
+            response.json(result);
+        } catch (err) {
+            throw new Error(err);
+        }
     }
 );
 
