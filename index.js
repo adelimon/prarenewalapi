@@ -102,6 +102,7 @@ app.post('/members/apply',
             prefers_mail: false,
             last_modified_by: 'renewalsApi',
             last_modified_date: new Date(),
+            text_ok: true,
         };
         let result = await pool.query('insert into member set ?', insertApplicant);
         console.log("inserted member id " + result.insertId + ": " + applicant.firstName + " " + applicant.lastName);
@@ -115,7 +116,7 @@ app.post('/members/apply',
             subject: year + ' PRA application confirmation',
             text:
               'Hi, ' + insertApplicant.first_name + '!\nThis email is your confirmation that your application to PRA has been received by the club.  We will\n' +
-              'follow up with you on any next steps.  We will be reviewing all applications in late February of 2020.\n' +
+              'follow up with you on any next steps.  We will be reviewing all applications in late February of 2022.\n' +
               'See you soon!\n -PRA'
         };
         let mailgunResponse = await mailcannon.fire(applicantConfirmation);
@@ -315,7 +316,7 @@ app.post('/members/renew',
 
         let decodedtoken = tokendecoder.getMemberInfo(memberInfo.token);
         let updateResult = await pool.query(
-            'update member set current_year_renewed = 1, last_modified_date = CURRENT_TIMESTAMP(), last_modified_by = ? where id = ?',
+            'update member set current_year_renewed = 1, text_ok = 1, last_modified_date = CURRENT_TIMESTAMP(), last_modified_by = ? where id = ?',
             ['renewalsAPI', decodedtoken.id]
         );
 	    // now that the database is updated, save the insurance card file (to an s3 bucket)
@@ -412,7 +413,7 @@ app.get('/members/lookup/:phone',
         try {
             let incomingPhone = request.params.phone.replace('+1', '');
             let result = await pool.query(
-                `select last_name, first_name, phone, id, year(date_joined) jy, zip from member where replace(replace(phone, '-', ''), '.', '') = ?`,
+                `select last_name, first_name, phone, id, year(date_joined) jy, zip from member where end_date is null and replace(replace(phone, '-', ''), '.', '') = ?`,
                 [incomingPhone]
             );
             let memberResult = {};
