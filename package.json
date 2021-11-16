@@ -11,7 +11,7 @@
   "author": "adelimon",
   "license": "ISC",
   "dependencies": {
-    "aws-sdk": "^2.384.0",
+    "aws-sdk": "^2.814.0",
     "aws-serverless-express": "^3.3.5",
     "cors": "^2.8.5",
     "dotenv": "^6.2.0",
