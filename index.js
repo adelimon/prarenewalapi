@@ -3,7 +3,6 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const _ = require('lodash');
-const jwt = require('express-jwt');
 
 const mailcannon = require('./mailcannon');
 
