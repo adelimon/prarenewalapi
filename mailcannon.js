@@ -1,24 +1,43 @@
-const fire = async function(ammo) {
-    let mailgun = require('mailgun-js')({apiKey: process.env.MAILER_API_KEY, domain: process.env.MAILER_DOMAIN});
-    
-    console.log(JSON.stringify(ammo));
-    console.log(process.env.MAILER_DOMAIN);
-    let testMode = process.env.MAIL_TEST_MODE;
-    let body = {};
-    if (!testMode) {
-        let body = await mailgun.messages().send(ammo);
-        try {
-            console.log(JSON.stringify(body));
-        } catch (err) {
-            console.log("error sending email via mailgun api, see the next line for details");
-            console.log(JSON.stringify(err));
-        }
-    } else {
-        console.log("mail not sent, because youre in test mode, but here's what it'd look like if I did send it");
-        console.log(JSON.stringify(ammo));
+const AWS = require('aws-sdk');
+
+/**
+ * Load an email into the email cannon, and fire away!
+ * 
+ * This method name is a poor play on "mailgun" which I used to use to perform this service.  It's not there 
+ * any more but the name sticks for amusement.
+ * 
+ * @param {object} ammo an object with the following fields:
+ * { from, to, cc, subject, text}
+ * @returns result of the send.
+ */
+const fireAws = async function(ammo) {
+    const sendParams = {
+        Destination: {
+            ToAddresses: [ammo.to],
+            CcAddresses: [ammo.cc],
+        },
+        Message: {
+            Subject: { Data: ammo.subject },
+            Body: {
+                Html: {
+                    Charset: 'UTF-8',
+                    Data: ammo.text,
+                },
+            },
+        },
+        ReplyToAddresses: [ammo.from],
+        Source: ammo.from,        
+    };
+    try {
+        let ses = new AWS.SES();
+        let key = await ses.sendEmail(sendParams).promise();
+        console.log('Email sent ' + key.MessageId);
+    } catch (error) {
+        console.error('Failed to send email to ' + to + ' due to ', error);
+        throw error;
     }
-    return body;
 }
+
 module.exports = {
-    fire,
+    fireAws,
 }
