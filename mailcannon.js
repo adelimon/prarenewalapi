@@ -19,21 +19,21 @@ const fireAws = async function(ammo) {
         Message: {
             Subject: { Data: ammo.subject },
             Body: {
-                Html: {
+                Text: {
                     Charset: 'UTF-8',
                     Data: ammo.text,
                 },
             },
         },
         ReplyToAddresses: [ammo.from],
-        Source: ammo.from,        
+        Source: 'admin@palmyramx.com',        
     };
     try {
         let ses = new AWS.SES();
         let key = await ses.sendEmail(sendParams).promise();
         console.log('Email sent ' + key.MessageId);
     } catch (error) {
-        console.error('Failed to send email to ' + to + ' due to ', error);
+        console.error('Failed to send email to ' + ammo.to + ' due to ', error);
         throw error;
     }
 }

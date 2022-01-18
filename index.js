@@ -359,9 +359,14 @@ app.post('/members/renew',
                 memberInfo.address + '\n' + memberInfo.city + ', ' + memberInfo.state + ' '  + memberInfo.zip + '\n\n' +
                 memberInfo.phone
           };
-          let mailReponse = await mailcannon.fireAws(emailNotification);
-          console.log('mail sent for ' + memberInfo.token + ' we are all done, wrapping it up');
-          response.json(mailReponse);
+          try {
+            let mailReponse = await mailcannon.fireAws(emailNotification);
+            console.log('mail sent for ' + memberInfo.token + ' we are all done, wrapping it up');
+            response.json(mailReponse);
+          } catch (error) {
+            console.error(error);
+            response.status(500);
+          }
     }
 );
 
