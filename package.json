@@ -4,7 +4,7 @@
   "description": "API for Palmyra Racing Association renewals, applications, and data updates.",
   "main": "index.js",
   "scripts": {
-    "test": "jest test/*",
+    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.local.js",
     "deploy": "claudia update --profile pra"
   },
@@ -17,11 +17,11 @@
     "dotenv": "^6.2.0",
     "express": "^4.16.4",
     "lodash": "^4.17.21",
+    "mailgun-js": "^0.22.0",
     "mysql": "^2.16.0",
     "util": "^0.11.1"
   },
   "devDependencies": {
-    "claudia": "^5.3.0",
-    "jest": "^27.4.7"
+    "claudia": "^5.3.0"
   }
 }

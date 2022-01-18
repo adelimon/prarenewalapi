@@ -118,7 +118,7 @@ app.post('/members/apply',
               'follow up with you on any next steps.  We will be reviewing all applications in late February of 2022.\n' +
               'See you soon!\n -PRA'
         };
-        let mailgunResponse = await mailcannon.fireAws(applicantConfirmation);
+        let mailgunResponse = await mailcannon.fire(applicantConfirmation);
 
         // step three: send an email to the board with the guy's information so that they can accept or deny the guy
 
@@ -147,7 +147,7 @@ app.post('/members/apply',
                 subject: 'New member application - ' + insertApplicant.first_name + ' ' + insertApplicant.last_name,
                 html: boardMemberHtml,
             };
-            let boardEmail = await mailcannon.fireAws(boardMemberNotification);
+            let boardEmail = await mailcannon.fire(boardMemberNotification);
         }
         response.json(createdResult[0]);
     }
@@ -221,7 +221,7 @@ app.get('/applicant/approve/:year/:memberId/:boardMemberToken',
                 secretaryNotification.text +=
                     approver.first_name + ', ' + approver.last_name + ' at ' + approver.last_modified_date + '\n';
             }
-            let mailResult = await mailcannon.fireAws(secretaryNotification);
+            let mailResult = await mailcannon.fire(secretaryNotification);
             result.detail += 'all approvals recieved, sent for further processing';
         }
         console.log(JSON.stringify(result));
@@ -359,7 +359,7 @@ app.post('/members/renew',
                 memberInfo.address + '\n' + memberInfo.city + ', ' + memberInfo.state + ' '  + memberInfo.zip + '\n\n' +
                 memberInfo.phone
           };
-          let mailReponse = await mailcannon.fireAws(emailNotification);
+          let mailReponse = await mailcannon.fire(emailNotification);
           console.log('mail sent for ' + memberInfo.token + ' we are all done, wrapping it up');
           response.json(mailReponse);
     }
