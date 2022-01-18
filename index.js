@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const _ = require('lodash');
+const QRCodeInterface = require('./qrCodeInterface');
 
 const mailcannon = require('./mailcannon');
 
@@ -471,5 +472,32 @@ app.get('/member/text/allowed',
         }
     }
 );
+
+app.get('/member/qr/:token', 
+    async function(request, response) {
+        try {
+            const token = request.params.token;
+            // make sure this exists, so we aren't QR coding just anything!
+            const member = await tokendecoder.getMemberInfo(token);
+            if (!member) {
+                throw new Error(`${token} is not a valid value and no record is associated with it, sorry.`);
+            }
+            console.log('member found, generating a QR...');
+            const generator = new QRCodeInterface();
+            const qrData = await generator.getQrDataUrl(token);
+            const imgData = qrData.replace('data:image/png;base64,', '');;            
+            const qrImg = Buffer.from(imgData, 'base64');
+
+            response.writeHead(200, {
+                'Content-Type': 'image/png',
+                'Content-Length': qrImg.length
+            });            
+            response.end(qrImg); 
+        } catch (err) {
+            console.error(err);
+            response.status(500);
+        }
+    }
+)
 
 module.exports = app;
