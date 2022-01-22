@@ -2,7 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
+// eslint-disable-next-line id-length
 const _ = require('lodash');
+const AWS = require('aws-sdk');
+
 const QRCodeInterface = require('./qrCodeInterface');
 
 const mailcannon = require('./mailcannon');
@@ -10,7 +13,6 @@ const mailcannon = require('./mailcannon');
 const pool = require('./database');
 const tokendecoder = require('./tokendecoder');
 const awsupload = require('./awsupload');
-const package = require('./package.json');
 const app = express();
 
 const emailWithName = function(rowData) {
@@ -474,7 +476,7 @@ app.get('/member/text/allowed',
 );
 
 app.get('/member/qr/:token', 
-    async function(request, response) {
+    async (request, response) => {
         try {
             const token = request.params.token;
             // make sure this exists, so we aren't QR coding just anything!
@@ -499,5 +501,26 @@ app.get('/member/qr/:token',
         }
     }
 )
+
+app.get('/member/resend/:token',
+    async (request, response) => {
+        try {
+            const token = request.params.token;
+            console.log(`Resending for ${token}`);
+            const sns = new AWS.SNS();
+            const snsResponse = await sns.publish({
+                Message: token,
+                TopicArn: process.env.BILLING_SNS_ARN,
+            }).promise();
+            console.log(snsResponse);
+            response.json({
+                token,
+                snsResponse,
+            });
+        } catch (err) {
+            throw new Error(err);
+        }
+    }
+);
 
 module.exports = app;
