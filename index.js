@@ -54,23 +54,6 @@ app.get('/health',
     }
 );
 
-app.get('/events/thisyear',
-    async function get(request, response)  {
-        try {
-            let result = await pool.query(
-                `select sd.date, et.type, sd.event_name, sd.event_description, sd.event_type_id from schedule_date sd, event_type et
-                 where year(sd.date) = year(now()) and sd.event_type_id = et.id and sd.event_type_id != 9
-                 order by sd.date`
-            );
-            if (result) {
-                response.json(result);
-            }
-        } catch(err) {
-            throw new Error(err);
-        }
-    }
-);
-
 app.get('/members/:token',
     async function getMember(request, response)  {
         try {
@@ -155,81 +138,6 @@ app.post('/members/apply',
         response.json(createdResult[0]);
     }
 
-);
-
-app.get('/applicant/approve/:year/:memberId/:boardMemberToken',
-    async function boardMemberApproval(request, response) {
-        // make sure that this is an actual board member
-        let applicantId = request.params.memberId;
-        let applicationYear = request.params.year;
-        let result = {
-            status: 'Failed',
-            approver: '',
-            detail: '',
-        };
-        let boardMemberInfo = await lookupMemberByToken(request.params.boardMemberToken);
-        let boardMemberResult = await pool.query(
-            'select * from member where id in (select member_id from board_member where member_id = ? and year = ?)',
-            [boardMemberInfo.id, applicationYear]
-        );
-        let applicantResult = await pool.query('select * from member where id = ?', applicantId);
-        if (boardMemberResult.length === 1) {
-            // make sure the member applying exists
-            result.approver = boardMemberInfo.last_name + ', ' + boardMemberInfo.first_name;
-            if (applicantResult && (applicantResult.length === 1)) {
-                // both board member and applicant are valid, so record the response in the table
-                let approvalRecorded = await pool.query('select * from application where member_id = ? and approver = ?',
-                    [applicantId, boardMemberResult[0].id]);
-                // if there is an approval already recorded, then ignore this. but otherwise, record it.
-                if (approvalRecorded.length === 0) {
-                    let approvalInsert = {
-                        member_id: applicantId,
-                        approver: boardMemberResult[0].id,
-                        last_modified_date: new Date(),
-                    };
-                    let something = await pool.query('insert into application set ?', approvalInsert);
-                    result.status = 'Success';
-                    result.detail = 'Approval for ' + applicantResult[0].last_name + ' recorded at ' + approvalInsert.last_modified_date;
-                } else {
-                    result.status = 'Success';
-                    result.detail = 'Approval for ' + applicantResult[0].last_name + ' already recorded for you at ' + approvalRecorded[0].last_modified_date;
-                }
-            }
-        }
-        // that the approval is recorded, check to see if we have hit the threshold, and if so, throw an email to the
-        // secretary telling him to get his shit done.
-        let approvalResult = await pool.query(
-            //'select count(*) approvals from application where member_id = ?',
-            `select m.last_name, m.first_name, a.last_modified_date
-            from member m inner join application a on a.approver = m.id where a.member_id = ?`,
-            applicantId
-        );
-        let approvals = approvalResult.length;
-        // greater than 4 (5 or more) approvals is a majority so let the secretary know he's got work to do.
-        // approvals after 5 will be counted, but don't harrass the secretary with them since we have enough already.
-        if (approvals === 5) {
-            // flip the member from 'applicant' to 'new member' now that all approvals are done. This saves the secretary
-            // a step so that they don't have to do it manually.
-            await pool.query('update member set status = 14 where id = ?', applicantId);
-            let secretaryNotification = {
-                from: 'no-reply@palmyramx.com',
-                to: 'hogbacksecretary@gmail.com',
-                subject: 'PRA Application for ' + applicantResult[0].last_name + ',' + applicantResult[0].first_name + ' requires action',
-                text:
-                    'Application for ' + applicantResult[0].last_name + ', ' + applicantResult[0].first_name +  ' has the required approvals.  Please ' +
-                    'log in to https://apps.palmyramx.com/#/member/' + applicantId + ' to generate a bill and complete the process.\n  Approvers:\n'
-            };
-            for (let index = 0; index < approvalResult.length; index++) {
-                let approver = approvalResult[index];
-                secretaryNotification.text +=
-                    approver.first_name + ', ' + approver.last_name + ' at ' + approver.last_modified_date + '\n';
-            }
-            let mailResult = await mailcannon.fireAws(secretaryNotification);
-            result.detail += 'all approvals recieved, sent for further processing';
-        }
-        console.log(JSON.stringify(result));
-        response.json(result);
-    }
 );
 
 app.post('/members/renew',
@@ -370,97 +278,6 @@ app.post('/members/renew',
             console.error(error);
             response.status(500);
           }
-    }
-);
-
-app.get('/members/lookup/:phone',
-    async function get(request, response) {
-        try {
-            let incomingPhone = request.params.phone.replace('+1', '');
-            let result = await pool.query(
-                `select last_name, first_name, phone, id, year(date_joined) jy, zip from member where end_date is null and replace(replace(phone, '-', ''), '.', '') = ?`,
-                [incomingPhone]
-            );
-            let memberResult = {};
-            if (result) {
-                memberResult = result[0];
-            }
-            response.json(memberResult);
-        } catch (err) {
-            throw new Error(err);
-        }
-    }
-);
-
-app.get('/events/next/members',
-    async function get(request, response)  {
-        try {
-            let result = await pool.query(
-                `select sd.date, et.type, sd.event_name, sd.event_description, sd.event_type_id from schedule_date sd, event_type et
-                where year(sd.date) = year(now()) and sd.date > now() and sd.event_type_id = et.id order by sd.date limit 1`
-            );
-            if (result) {
-                let dateResult = result[0].date;
-                let longFormDate = new Date(dateResult).toLocaleDateString(
-                    'en-us',  { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
-                );
-                let apiResponse = {
-                    date: longFormDate,
-                    type: result[0].type,
-                }
-                response.json(apiResponse);
-            }
-        } catch(err) {
-            throw new Error(err);
-        }
-    }
-);
-
-app.get('/events/next',
-    async function get(request, response)  {
-        try {
-            let result = await pool.query(
-                `select sd.date, et.type, sd.event_name, sd.event_description, sd.event_type_id from schedule_date sd, event_type et
-                where year(sd.date) = year(now()) and sd.date > now() and sd.event_type_id = et.id and sd.event_type_id not in (7,9)
-                order by sd.date limit 1`
-            );
-            if (result) {
-                response.json(result[0]);
-            }
-        } catch(err) {
-            throw new Error(err);
-        }
-    }
-);
-
-app.get('/gatecode',
-    async function(request, response) {
-        try {
-            let result = await pool.query(
-                `select apiKey from integration where platform = 'gateCode'`
-            );
-            let apiReponse = {
-                code: result[0].apiKey,
-            }
-            response.json(apiReponse);
-        } catch (err) {
-            throw new Error(err);
-        }
-    }
-);
-
-app.put('/member/optIn/:id',
-    async function(request, response) {
-        let id = request.params.id;
-        let result = await pool.query(
-            'update member set text_ok = 1, last_modified_date = CURRENT_TIMESTAMP() where id = ?', 
-            [id],
-        );
-        console.log(JSON.stringify(result));
-        let msg = "member id " + id + " has been opted in to text messaging.";
-        console.log(msg);
-        result.message = msg;
-        response.json(result);
     }
 );
 
